@@ -51,12 +51,12 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       }
     })
 
-    const airtableSearch = async () => {
+    const airtableSearch = async (table, filterFormula) => {
       try {
-        const records = await base('Merchant Records')
+        const records = await base(table)
           .select({
             //Change filter params
-            filterByFormula: `DATETIME_DIFF({Status Change Date (DUPS)}, DATEADD(TODAY(),-90,'days'), 'days') > 0`,
+            filterByFormula: filterFormula,
           })
           .all()
         return records
@@ -65,10 +65,16 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       }
     }
 
-    let dupParams = await airtableSearch()
+    let dupParams = await airtableSearch(
+      'Merchant Records',
+      `DATETIME_DIFF({Status Change Date (DUPS)}, DATEADD(TODAY(),-90,'days'), 'days') > 0`
+    )
+    let dupParamsInbound = await airtableSearch(
+      'Inbound Leads',
+      `DATETIME_DIFF({Status Change Date}, DATEADD(TODAY(),-90,'days'), 'days') > 0`
+    )
     let arr = csvData
     let dupBlockLeads = []
-    //   for (let i = 0; i < csvData.length; i++) {
 
     arr.map((csvData, index) => {
       for (let j = 0; j < dupParams.length; j++) {
@@ -76,11 +82,25 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
           dupParams[j].fields['Business Phone'] === csvData[match] ||
           dupParams[j].fields['Owner 1 Mobile'] === csvData[match]
         ) {
-          console.log(csvData)
           arr.splice(index, 1)
-          //leads[i].lead.push({ 'Dup Blocked MID': dupParams[j].fields.MID });
           let obj = csvData
           obj['Dup Blocked MID'] = dupParams[j].fields.MID
+          dupBlockLeads.push(obj)
+        }
+      }
+    })
+
+    arr.map((csvData, index) => {
+      for (let j = 0; j < dupParamsInbound.length; j++) {
+        if (
+          dupParamsInbound[j].fields['Business Phone Formatted'] ===
+            csvData[match] ||
+          dupParamsInbound[j].fields['Mobile Phone Formatted'] ===
+            csvData[match]
+        ) {
+          arr.splice(index, 1)
+          let obj = csvData
+          obj['Dup Blocked MID'] = dupParamsInbound[j].ID
           dupBlockLeads.push(obj)
         }
       }
