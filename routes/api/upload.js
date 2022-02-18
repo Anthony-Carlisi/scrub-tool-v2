@@ -71,7 +71,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
     )
     let dupParamsInbound = await airtableSearch(
       'Inbound Leads',
-      `DATETIME_DIFF({Status Change Date}, DATEADD(TODAY(),-90,'days'), 'days') > 0`
+      `DATETIME_DIFF({Status Change}, DATEADD(TODAY(),-90,'days'), 'days') > 0`
     )
     let arr = csvData
     let dupBlockLeads = []
@@ -168,8 +168,8 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
 
     // Change Email info
     sendNotifications(
-      'anthonycarlisi95@gmail.com',
-      'Test',
+      'marketing@straightlinesource.com.com',
+      `${req.file.originalname} Scrub ${Date.now}`,
       'Test body',
       attachments
     ).then(() => {
