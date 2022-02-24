@@ -11,3 +11,5 @@ app.use('/api/upload', require('./routes/api/upload'))
 const PORT = process.env.PORT || 5000
 // when the server is started it will console log Server started on port (then the port specified)
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`))
+
+//erick test
