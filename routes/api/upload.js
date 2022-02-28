@@ -17,32 +17,55 @@ var storage = multer.diskStorage({
   },
 })
 
-const apiKey = config.get('airtableApiKey')
-const baseId = config.get('airtableBase')
-const base = new Airtable({ apiKey: apiKey }).base(baseId)
-
+const base = new Airtable({ apiKey: config.get('airtableApiKey') }).base(
+  config.get('airtableBase')
+)
 const uploadFile = multer({ storage: storage })
+
+const airtableSearch = async (table, scrubbingView) => {
+  try {
+    const records = await base(table)
+      .select({
+        //Change filter params
+        //filterByFormula: filterFormula,
+        view: scrubbingView,
+      })
+      .all()
+    return records
+  } catch (error) {
+    console.log(error)
+  }
+}
 
 // @route   Post api/upload
 // @desc    Create an Upload
 // @access  Private
 router.post('/', uploadFile.single('file'), async (req, res) => {
   try {
-    let match
+    let phoneHeader
+    let emailHeader
     let headerFields = []
     //Gets
-    let csvData = await csv()
+    const csvData = await csv()
       .fromFile(req.file.path)
       .on('header', (headers) => {
         headerFields = headers
-        match = headers.find((element) => {
+        phoneHeader = headers.find((element) => {
           if (element.includes('phone')) {
             return true
           }
         })
+        emailHeader = headers.find((element) => {
+          if (element.includes('email')) {
+            return true
+          }
+        })
       })
-    if (match === undefined)
-      return res.status(503).json({ msg: 'Phone Number Field not found' })
+
+    if (phoneHeader === undefined || emailHeader === undefined)
+      return res
+        .status(503)
+        .json({ msg: 'Phone Number or Email Field not found' })
 
     fs.unlink(req.file.path, (err) => {
       if (err) {
@@ -51,65 +74,50 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       }
     })
 
-    const airtableSearch = async (table, filterFormula) => {
-      try {
-        const records = await base(table)
-          .select({
-            //Change filter params
-            filterByFormula: filterFormula,
-          })
-          .all()
-        return records
-      } catch (error) {
-        console.log(error)
+    let dupParams = await airtableSearch('Merchant Records', 'Scrubbing Tool')
+    let dupParamsInbound = await airtableSearch(
+      'Inbound Leads',
+      'Scrubbing Tool'
+    )
+
+    const result = []
+    const dups = []
+    const map = new Map()
+    for (const item of dupParamsInbound) {
+      if (
+        !map.has(item.fields['Mobile Phone Formatted']) ||
+        !map.has(item.fields['Business Phone Formatted']) ||
+        !map.has(item.fields.Email)
+      ) {
+        map.set(item.fields['Mobile Phone Formatted'], true)
+        map.set(item.fields['Business Phone Formatted'], true)
+        map.set(item.fields.Email, true)
+      }
+    }
+    for (const item of dupParams) {
+      if (
+        !map.has(item.fields['Business Phone Text']) ||
+        !map.has(item.fields['Owner 1 Mobile Text']) ||
+        !map.has(item.fields['Email 1'])
+      ) {
+        map.set(item.fields['Business Phone Text'], true)
+        map.set(item.fields['Owner 1 Mobile Text'], true)
+        map.set(item.fields['Email 1'], true)
       }
     }
 
-    let dupParams = await airtableSearch(
-      'Merchant Records',
-      `DATETIME_DIFF({Status Change Date (DUPS)}, DATEADD(TODAY(),-90,'days'), 'days') > 0`
-    )
-    let dupParamsInbound = await airtableSearch(
-      'Inbound Leads',
-      `DATETIME_DIFF({Status Change}, DATEADD(TODAY(),-90,'days'), 'days') > 0`
-    )
-    let arr = csvData
-    let dupBlockLeads = []
-
-    arr.map((csvData, index) => {
-      for (let j = 0; j < dupParams.length; j++) {
-        if (
-          dupParams[j].fields['Business Phone'] === csvData[match] ||
-          dupParams[j].fields['Owner 1 Mobile'] === csvData[match]
-        ) {
-          arr.splice(index, 1)
-          let obj = csvData
-          obj['Dup Blocked MID'] = dupParams[j].fields.MID
-          dupBlockLeads.push(obj)
-        }
+    for (const item of csvData) {
+      if (!map.has(item[phoneHeader] || !map.has(item[emailHeader]))) {
+        result.push(item)
+      } else {
+        dups.push(item)
       }
-    })
-
-    arr.map((csvData, index) => {
-      for (let j = 0; j < dupParamsInbound.length; j++) {
-        if (
-          dupParamsInbound[j].fields['Business Phone Formatted'] ===
-            csvData[match] ||
-          dupParamsInbound[j].fields['Mobile Phone Formatted'] ===
-            csvData[match]
-        ) {
-          arr.splice(index, 1)
-          let obj = csvData
-          obj['Dup Blocked MID'] = dupParamsInbound[j].ID
-          dupBlockLeads.push(obj)
-        }
-      }
-    })
+    }
 
     let attachments = []
 
-    if (arr.length !== 0) {
-      const csv = json2csv(arr, headerFields)
+    if (result.length !== 0) {
+      const csv = json2csv(result, headerFields)
 
       fs.writeFile(
         `./temp/${req.file.originalname} Export.csv`,
@@ -124,9 +132,9 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
         path: `./temp/${req.file.originalname} Export.csv`,
       })
     }
-    if (dupBlockLeads.length !== 0) {
+    if (dups.length !== 0) {
       headerFields.push('Dup Blocked MID')
-      const csv2 = json2csv(dupBlockLeads, headerFields)
+      const csv2 = json2csv(dups, headerFields)
       fs.writeFile(
         `./temp/${req.file.originalname} DupBlock Export.csv`,
         csv2,
@@ -168,12 +176,12 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
 
     // Change Email info
     sendNotifications(
-      'marketing@straightlinesource.com.com',
+      'anthonycarlisi95@gmail.com',
       `${req.file.originalname} Scrub ${Date.now}`,
       'Test body',
       attachments
     ).then(() => {
-      if (arr.length !== 0) {
+      if (result.length !== 0) {
         fs.unlink(`./temp/${req.file.originalname} Export.csv`, (err) => {
           if (err) {
             console.error(err)
@@ -181,7 +189,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
           }
         })
       }
-      if (dupBlockLeads.length !== 0) {
+      if (dups.length !== 0) {
         fs.unlink(
           `./temp/${req.file.originalname} DupBlock Export.csv`,
           (err) => {
