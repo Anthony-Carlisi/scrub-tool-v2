@@ -80,10 +80,10 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       'Scrubbing Tool'
     )
 
-    const result = []
-    const dups = []
-    const map = new Map()
-    for (const item of dupParamsInbound) {
+    let result = []
+    let dups = []
+    let map = new Map()
+    for (let item of dupParamsInbound) {
       if (
         !map.has(item.fields['Mobile Phone Formatted']) ||
         !map.has(item.fields['Business Phone Formatted']) ||
@@ -94,7 +94,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
         map.set(item.fields.Email, true)
       }
     }
-    for (const item of dupParams) {
+    for (let item of dupParams) {
       if (
         !map.has(item.fields['Business Phone Text']) ||
         !map.has(item.fields['Owner 1 Mobile Text']) ||
@@ -106,18 +106,28 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       }
     }
 
-    for (const item of csvData) {
-      if (!map.has(item[phoneHeader] || !map.has(item[emailHeader]))) {
-        result.push(item)
-      } else {
+    // for (let item of csvData) {
+    //   if (!map.has(item[phoneHeader] || !map.has(item[emailHeader]))) {
+    //     result.push(item)
+    //   } else {
+    //     dups.push(item)
+    //   }
+    // }
+
+    for (let item of csvData) {
+      let phoneTest = map.has(item[phoneHeader])
+      let emailTest = map.has(item[emailHeader])
+      if (phoneTest || emailTest) {
         dups.push(item)
+      } else {
+        result.push(item)
       }
     }
 
     let attachments = []
 
     if (result.length !== 0) {
-      const csv = json2csv(result, headerFields)
+      let csv = json2csv(result, headerFields)
 
       fs.writeFile(
         `./temp/${req.file.originalname} Export.csv`,
@@ -134,7 +144,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
     }
     if (dups.length !== 0) {
       headerFields.push('Dup Blocked MID')
-      const csv2 = json2csv(dups, headerFields)
+      let csv2 = json2csv(dups, headerFields)
       fs.writeFile(
         `./temp/${req.file.originalname} DupBlock Export.csv`,
         csv2,
@@ -176,7 +186,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
 
     // Change Email info
     sendNotifications(
-      'anthonycarlisi95@gmail.com',
+      'ehernandez@slsbiz.com',
       `${req.file.originalname} Scrub ${Date.now}`,
       'Test body',
       attachments
