@@ -10,7 +10,7 @@ const nodemailer = require('nodemailer')
 
 var storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'tempToken/')
+    cb(null, 'temp/')
   },
   filename: function (req, file, cb) {
     cb(null, file.originalname)
@@ -99,7 +99,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
     if (clean.length !== 0) {
       let csv = json2csv(results, headerFields)
       fs.writeFile(
-        `./tempToken/${req.file.originalname} - RESULTS.csv`,
+        `./temp/${req.file.originalname} - RESULTS.csv`,
         csv,
         function (err) {
           if (err) throw err
@@ -108,7 +108,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       )
       attachments.push({
         filename: `${req.file.originalname} - RESULTS.csv`,
-        path: `./tempToken/${req.file.originalname} - RESULTS.csv`,
+        path: `./temp/${req.file.originalname} - RESULTS.csv`,
       })
     }
 
@@ -116,7 +116,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
     if (clean.length !== 0) {
       let csv = json2csv(clean, headerFields)
       fs.writeFile(
-        `./tempToken/${req.file.originalname} - CLEAN.csv`,
+        `./temp/${req.file.originalname} - CLEAN.csv`,
         csv,
         function (err) {
           if (err) throw err
@@ -125,7 +125,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       )
       attachments.push({
         filename: `${req.file.originalname} - CLEAN.csv`,
-        path: `./tempToken/${req.file.originalname} - CLEAN.csv`,
+        path: `./temp/${req.file.originalname} - CLEAN.csv`,
       })
     }
 
@@ -133,7 +133,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
     if (dirty.length !== 0) {
       let csv2 = json2csv(dirty, headerFields)
       fs.writeFile(
-        `./tempToken/${req.file.originalname} - DIRTY.csv`,
+        `./temp/${req.file.originalname} - DIRTY.csv`,
         csv2,
         function (err) {
           if (err) throw err
@@ -142,7 +142,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
       )
       attachments.push({
         filename: `${req.file.originalname} - DIRTY.csv`,
-        path: `./tempToken/${req.file.originalname} - DIRTY.csv`,
+        path: `./temp/${req.file.originalname} - DIRTY.csv`,
       })
     }
 
@@ -180,7 +180,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
     ).then(() => {
       if (results.length !== 0) {
         fs.unlink(
-          `./tempToken/${req.file.originalname} - RESULTS.csv`,
+          `./temp/${req.file.originalname} - RESULTS.csv`,
           (err) => {
             if (err) {
               console.error(err)
@@ -190,7 +190,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
         )
       }
       if (clean.length !== 0) {
-        fs.unlink(`./tempToken/${req.file.originalname} - CLEAN.csv`, (err) => {
+        fs.unlink(`./temp/${req.file.originalname} - CLEAN.csv`, (err) => {
           if (err) {
             console.error(err)
             return
@@ -198,7 +198,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
         })
       }
       if (dirty.length !== 0) {
-        fs.unlink(`./tempToken/${req.file.originalname} - DIRTY.csv`, (err) => {
+        fs.unlink(`./temp/${req.file.originalname} - DIRTY.csv`, (err) => {
           if (err) {
             console.error(err)
             return
