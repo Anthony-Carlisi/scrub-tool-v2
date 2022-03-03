@@ -40,7 +40,7 @@ const airtableSearch = async (table, scrubbingView) => {
 // @route   Post api/upload
 // @desc    Create an Upload
 // @access  Private
-router.post('/', uploadFile.single('file'), async (req, res) => {
+router.post('/airtableScrub', uploadFile.single('file'), async (req, res) => {
   try {
     let phoneHeader
     let emailHeader
@@ -186,9 +186,9 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
 
     // Change Email info
     sendNotifications(
-      'ehernandez@slsbiz.com',
-      `${req.file.originalname} Scrub ${Date.now}`,
-      'Test body',
+      config.get('myEmail'),
+      `AIRTABLE SCRUB: ${req.file.originalname} - ${new Date().toLocaleString()}`,
+      'Airtable Scrub Results',
       attachments
     ).then(() => {
       if (result.length !== 0) {
