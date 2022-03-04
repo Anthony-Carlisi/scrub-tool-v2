@@ -18,7 +18,7 @@ var storage = multer.diskStorage({
 })
 
 const base = new Airtable({ apiKey: config.get('airtableApiKey') }).base(
-  config.get('tokenBase')
+  config.get('scrubbingBase')
 )
 const uploadFile = multer({ storage: storage })
 
@@ -36,6 +36,8 @@ const airtableSearch = async (table) => {
 // @access  Private
 router.post('/', uploadFile.single('file'), async (req, res) => {
   try {
+    let sendToEmail = req.body.sendToEmail
+    console.log(sendToEmail)
     let emailHeader //name of header field (just has to include the word 'email')
     let headerFields = []
 
@@ -173,7 +175,7 @@ router.post('/', uploadFile.single('file'), async (req, res) => {
 
     // Change Email info
     sendNotifications(
-      config.get('myEmail'),
+      sendToEmail,
       `TOKEN SCRUB: ${req.file.originalname} - ${new Date().toLocaleString()}`,
       'Token Scrub Results',
       attachments

@@ -42,6 +42,7 @@ const airtableSearch = async (table, scrubbingView) => {
 // @access  Private
 router.post('/airtableScrub', uploadFile.single('file'), async (req, res) => {
   try {
+    let sendToEmail = req.body.sendToEmail
     let phoneHeader
     let emailHeader
     let headerFields = []
@@ -186,7 +187,7 @@ router.post('/airtableScrub', uploadFile.single('file'), async (req, res) => {
 
     // Change Email info
     sendNotifications(
-      config.get('myEmail'),
+      sendToEmail,
       `AIRTABLE SCRUB: ${req.file.originalname} - ${new Date().toLocaleString()}`,
       'Airtable Scrub Results',
       attachments
